@@ -1,20 +1,27 @@
 package example.AutomationCICD;
+
 import java.time.Duration;
 
 import io.github.bonigarcia.wdm.WebDriverManager;
 import org.junit.jupiter.api.*;
-import org.openqa.selenium.*;
+import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
+
+import Pages.LoginPage;
+import Pages.InventoryPage;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 public class LoginTest {
 
     WebDriver driver;
+    LoginPage loginPage;
+    InventoryPage inventoryPage;
 
     @BeforeEach
     void setup() {
+
         WebDriverManager.chromedriver().setup();
 
         ChromeOptions options = new ChromeOptions();
@@ -23,71 +30,54 @@ public class LoginTest {
         options.addArguments("--disable-dev-shm-usage");
 
         driver = new ChromeDriver(options);
-        driver.manage().window().maximize();
-        driver.get("https://www.saucedemo.com/");
-        
         driver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
+        driver.get("https://www.saucedemo.com/");
+
+        loginPage = new LoginPage(driver);
+        inventoryPage = new InventoryPage(driver);
     }
 
     @Test
     void validLoginTest() {
 
-        driver.findElement(By.id("user-name")).sendKeys("standard_user");
-        driver.findElement(By.id("password")).sendKeys("secret_sauce");
-        driver.findElement(By.id("login-button")).click();
+        loginPage.login("standard_user", "secret_sauce");
 
-        String actualUrl = driver.getCurrentUrl();
-        assertTrue(actualUrl.contains("inventory"));
+        assertTrue(driver.getCurrentUrl().contains("inventory"));
     }
 
     @Test
-void invalidLoginTest() {
+    void invalidLoginTest() {
 
-    driver.findElement(By.id("user-name")).sendKeys("standard_user");
-    driver.findElement(By.id("password")).sendKeys("1234");
-    driver.findElement(By.id("login-button")).click();
+        loginPage.login("standard_user", "1234");
 
-    String errorMsg = driver.findElement(By.cssSelector("h3[data-test='error']")).getText();
-
-    assertEquals(
-        "Epic sadface: Username and password do not match any user in this service",
-        errorMsg
-    );
-}
-
-    @Test
-    void emptyTest() {
-
-        driver.findElement(By.id("login-button")).click();
-
-        String errorMsg = driver.findElement(By.cssSelector("h3[data-test='error']")).getText();
-
-        assertEquals("Epic sadface: Username is required", errorMsg);
-    }
-    
-    @Test
-    void addToCart() {
-
-        testValidLogin();
-        
-        // Add first product to cart
-        driver.findElement(By.id("add-to-cart-sauce-labs-backpack"))
-                .click();
-
-        // Verify cart badge shows 1
-        WebElement cartBadge =
-                driver.findElement(By.className("shopping_cart_badge"));
-
-        assertEquals("1", cartBadge.getText());
+        assertEquals(
+            "Epic sadface: Username and password do not match any user in this service",
+            loginPage.getErrorMessage()
+        );
     }
 
+    @Test
+    void emptyLoginTest() {
 
-    private void testValidLogin() {
-		// TODO Auto-generated method stub
-		
-	}
+        loginPage.clickLogin();
 
-	@AfterEach
+        assertEquals(
+            "Epic sadface: Username is required",
+            loginPage.getErrorMessage()
+        );
+    }
+
+    @Test
+    void addToCartTest() {
+
+        loginPage.login("standard_user", "secret_sauce");
+
+        inventoryPage.addFirstProductToCart();
+
+        assertEquals("1", inventoryPage.getCartBadgeCount());
+    }
+
+    @AfterEach
     void tearDown() {
         driver.quit();
     }
